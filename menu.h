@@ -34,6 +34,14 @@
 #define PAINT_DATE_TIME			(PAINT_DATE|PAINT_TIME)
 
 
+//
+// Types of text strings to show when editing a boolean value
+//
+typedef enum {
+	SI_NO, ENCENDIDO_APAGADO, ON_OFF, AUTO_MANUAL
+} bool_string;
+
+
 /****************************************************************************
  *							 EDIT_TIME_PARAMS
  * Descripción:
@@ -41,7 +49,7 @@
  * Variables:
  *		TIME initialValue:
  *			Valor inicial de la fecha u hora a editar.
- *		int cx, cy:
+ *		uint8_t cx, cy:
  *			Coordenadas en pantalla del extremo derecho del texto a mostrar.
  *		void (*saveChanges)(TIME*):
  *			Puntero a la función que guarde el nuevo valor en memoria.
@@ -80,6 +88,34 @@ typedef struct {
 } EDIT_INT_PARAMS;
 
 
+/****************************************************************************
+ *							 EDIT_BOOL_PARAMS
+ * Descripción:
+ *		Datos necesarios para iniciar una edición de dato booleano en el menú
+ * Variables:
+ *		bool initialValue:
+ *			Valor lógico inicial.
+ *		uint8_t cx, cy:
+ *			Coordenadas en pantalla del extremo derecho del texto a mostrar.
+ *		void (*saveChanges)(bool):
+ *			Puntero a la función que guarde el nuevo valor en memoria.
+ *		bool_string text:
+ *			Este valor indica a la función las cadenas de texto
+ *			predeterminadas que deberá imprimir en pantalla para indicar
+ *			el estado lógico de la variable.
+ ***************************************************************************/
+typedef struct {
+	bool initialValue;
+	uint8_t cx, cy;
+	void (*saveChanges)(bool);
+	bool_string text;
+} EDIT_BOOL_PARAMS;
+
+
+//
+// Cada una de estas funciones representa un submenú por el cual se
+// puede navegar.
+//
 void MENU_start(unsigned char key, unsigned int render);
 
 void MENU_root(unsigned char key, unsigned int render);
@@ -87,10 +123,25 @@ void MENU_root(unsigned char key, unsigned int render);
 void MENU_dateTime(unsigned char key, unsigned int render);
 
 
+//
+// Funciones dedicadas a la edición de distintos tipos de datos
+// desde el teclado
+//
 void EDIT_integer(unsigned char key, void* p);
 
 void EDIT_time(unsigned char key, void* p);
 
+void EDIT_bool(unsigned char key, void* p);
+
+
+//
+// Funciones especiales para imprimir tipos de datos especiales que
+// la función 'printf' no soporta.
+//
+void PRINT_bool_rightAlign(bool logicValue, bool_string text,
+		uint8_t cx, uint8_t cy);
+
+void PRINT_int_rightAlign(int value, uint8_t cx, uint8_t cy);
 
 #endif	/* MENU_H */
 

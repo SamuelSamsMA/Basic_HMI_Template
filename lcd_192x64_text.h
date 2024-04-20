@@ -98,7 +98,7 @@ void GLCD_clear(void);
 //  Description:
 //      
 //  Parameters:
-//      resetPointer: true -> disable and hide to the pointer
+//      resetPointer: true -> disable and hide the pointer
 //					  false -> Normal operation
 //********************************************************************
 void GLCD_managePointer(bool resetPointer);

@@ -16,6 +16,7 @@
 typedef union {
 	unsigned char all;
 	struct {
+		unsigned controlProcess : 1;
 		unsigned updateScreen	: 1;
 		unsigned screenPointer	: 1;
 		unsigned keyboardEvent	: 1;
@@ -37,6 +38,7 @@ typedef struct {
 	TIME currentTime;
 	
 	int LEDdutyCycle;
+	bool LEDstate;
 } APP_DATA;
 
 

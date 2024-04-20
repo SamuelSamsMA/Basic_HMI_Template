@@ -34,7 +34,17 @@ void main(void)
     {
 		if (tasks.all)
 		{
-			if (tasks.rtcReadTime)
+			if (tasks.controlProcess)
+			{
+				if (appData.LEDstate)
+					PWM1_LoadDutyValue(appData.LEDdutyCycle);
+				else
+					PWM1_LoadDutyValue(0);
+				
+				tasks.controlProcess = 0;	/* Done */
+			}
+			
+			else if (tasks.rtcReadTime)
 			{
 				static uint8_t prevDate = 0;
 				RTC_readHMS(&appData.currentTime);
@@ -115,9 +125,11 @@ void initApp(void)
 	
 	appData.currentMenu = MENU_start;
 	appData.currentEdit = NULL;
-	appData.LEDdutyCycle = 0;
+	appData.LEDdutyCycle = 250;
+	appData.LEDstate = false;
 	
 	tasks.all = 0;
+	tasks.controlProcess = 1;
 	tasks.updateScreen = 1;
 	tasks.rtcReadTime = 1;
 

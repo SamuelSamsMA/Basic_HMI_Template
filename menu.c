@@ -10,45 +10,90 @@ extern APP_DATA appData;
 void saveInteger(int* value)
 {
 	appData.LEDdutyCycle = *value;
-	PWM1_LoadDutyValue(*value);
+	tasks.controlProcess = 1;
+}
+
+void saveBool(bool value)
+{
+	appData.LEDstate = value;
+	tasks.controlProcess = 1;
 }
 
 void MENU_start(unsigned char key, unsigned int render)
 {
+	static unsigned char indicator = 1;
+	unsigned char prevIndicator = indicator;
+	const uint8_t nOptions = 2;
+	const char* strOptions[2] = {
+		"Estado:",
+		"% Intensidad:"
+	};
+	
 	switch (key)
 	{
+	case NULL_KEY:
+		break;
+		
 	case KEY_F1:
 		appData.currentMenu = MENU_root;
 		GLCD_clear();
 		tasks.updateScreen = 1;
 		return;
-	case KEY_F2:
-	{
-		EDIT_INT_PARAMS eip;
-		eip.cx = 32;
-		eip.cy = 3;
-		eip.initialValue = appData.LEDdutyCycle;
-		eip.vmax = 499;
-		eip.vmin = 0;
-		eip.saveChanges = saveInteger;
 		
-		appData.currentEdit = EDIT_integer;
-		EDIT_integer(NULL_KEY, &eip);
-	}
+	case KEY_UP:
+		if (indicator > 1)
+		{ /* Sube al apuntador una posición */
+			indicator--;
+			render |= PAINT_INDICATOR;
+		}
 		break;
+		
+	case KEY_DOWN:
+		if (indicator < nOptions)
+		{ /* Baja al apuntador una posición */
+			indicator++;
+			render |= PAINT_INDICATOR;
+		}
+		break;
+		
+	case KEY_ENT:
+		switch (indicator)
+		{
+		case 1:
+		{	 /* Inicia edición del estado lógico del LED */
+			EDIT_BOOL_PARAMS ebp;
+			ebp.cx = 32;
+			ebp.cy = 3;
+			ebp.initialValue = appData.LEDstate;
+			ebp.text = ENCENDIDO_APAGADO;
+			ebp.saveChanges = saveBool;
+
+			appData.currentEdit = EDIT_bool;
+			EDIT_bool(NULL_KEY, &ebp);
+		}
+			break;
+		case 2:
+		{	 /* Inicia edición de la intensidad del LED */
+			EDIT_INT_PARAMS eip;
+			eip.cx = 32;
+			eip.cy = 4;
+			eip.initialValue = appData.LEDdutyCycle;
+			eip.vmax = 499;
+			eip.vmin = 0;
+			eip.saveChanges = saveInteger;
+
+			appData.currentEdit = EDIT_integer;
+			EDIT_integer(NULL_KEY, &eip);
+		}
+			break;
+		}
+		break;
+	
 	default:
 		break;
 	}
 	
-	if (render & PAINT_TITLE)
-	{
-		GLCD_moveCursor(2, 3);
-		printf("%% Intensidad:");
-		char str[4];
-		uint8_t bytesWritten = (uint8_t)sprintf(str, "%d", appData.LEDdutyCycle);
-		GLCD_moveCursor(TOTAL_COLUMNS - bytesWritten + 1, 3);
-		printf("%s", str);
-	}
+	
 	if (render & PAINT_TIME)
 	{
 		GLCD_moveCursor(5, 1);
@@ -62,6 +107,23 @@ void MENU_start(unsigned char key, unsigned int render)
 		printf("%02d/%02d/%02d", appData.currentTime.date,
 				appData.currentTime.month,
 				appData.currentTime.year);
+	}
+	if (render & PAINT_OPTIONS)
+	{
+		GLCD_moveCursor(2, 3);
+		printf("%s", strOptions[0]);
+		PRINT_bool_rightAlign(appData.LEDstate, ENCENDIDO_APAGADO, 32, 3);
+		
+		GLCD_moveCursor(2, 4);
+		printf("%s", strOptions[1]);
+		PRINT_int_rightAlign(appData.LEDdutyCycle, 32, 4);
+	}
+	if (render & PAINT_INDICATOR)
+	{
+		GLCD_moveCursor(1, prevIndicator + 2);
+		GLCD_printChar(' ');
+		GLCD_moveCursor(1, indicator + 2);
+		GLCD_printChar('>');
 	}
 }
 
@@ -332,11 +394,7 @@ void EDIT_integer(unsigned char key, void* p)
 	GLCD_moveCursor(ini.cx - nDigitosMax + 1, ini.cy);
 	printf("     ");
 
-	char cadena[6];
-	uint8_t bytesEscritos = (uint8_t)sprintf(cadena, "%d", valorTemporal);
-	// Escribe la nueva cifra con justificación derecha
-	GLCD_moveCursor(ini.cx + 1 - bytesEscritos, ini.cy);
-	printf("%d", valorTemporal);
+	PRINT_int_rightAlign(valorTemporal, ini.cx, ini.cy);
 }
 
 
@@ -484,5 +542,97 @@ void EDIT_time(unsigned char key, void* p)
 }
 
 
+void EDIT_bool(unsigned char key, void* p)
+{
+	EDIT_BOOL_PARAMS* ebp = (EDIT_BOOL_PARAMS*)p;
+	
+	// Guarda el valor mientras se edita el dato, si se presiona ENTER,
+	// este valor se guardará en memoria definitivamente
+	static bool valorTemporal;
+	// Guarda los datos necesarios para llevar a cabo la edición
+	static EDIT_BOOL_PARAMS ini;
+	
+	if (ebp != NULL)
+	{ /* Configuración de una nueva edición */
+		ini.cx = ebp->cx;
+		ini.cy = ebp->cy;
+		ini.saveChanges = ebp->saveChanges;
+		ini.initialValue = ebp->initialValue;
+		ini.text = ebp->text;
+		
+		valorTemporal = ini.initialValue;
+		
+		GLCD_movePointer(ini.cx, ini.cy);
+		GLCD_turnOnPointer();
+	} /* Configuración de una nueva edición */
+	
+	switch (key)
+	{
+	case NULL_KEY:
+		break;
+		
+	case KEY_ESC:
+		appData.currentEdit = NULL;
+		GLCD_turnOffPointer();
+		valorTemporal = ini.initialValue;
+		break;
+		
+	case KEY_ENT:
+		appData.currentEdit = NULL;
+		GLCD_turnOffPointer();
+		ini.saveChanges(valorTemporal);
+		break;
+		
+	case KEY_LEFT: case KEY_RIGHT:
+		valorTemporal = !valorTemporal;
+		break;
+	} /* switch (key) */
+	
+	PRINT_bool_rightAlign(valorTemporal, ini.text, ini.cx, ini.cy);
+}
 
 
+const char* stringsForBool[4][2] = {
+	{"Si",			"No"},
+	{"Encendido",	"Apagado"},
+	{"On",			"Off"},
+	{"Auto",		"Manual"}};
+
+
+void PRINT_bool_rightAlign(bool logicValue, bool_string text,
+		uint8_t cx, uint8_t cy)
+{
+	char* stringToPrint = NULL;
+	uint8_t prevStringLenght, currentStringLenght;
+	
+	if (logicValue)
+	{
+		stringToPrint = stringsForBool[text][0];
+		currentStringLenght = strlen(stringsForBool[text][0]);
+		prevStringLenght = strlen(stringsForBool[text][1]);
+	}
+	else
+	{
+		stringToPrint = stringsForBool[text][1];
+		currentStringLenght = strlen(stringsForBool[text][1]);
+		prevStringLenght = strlen(stringsForBool[text][0]);
+	}
+	
+	// Limpia el texto anterior para escribir uno nuevo
+	GLCD_moveCursor(cx - prevStringLenght + 1, cy);
+	for (uint8_t i = 0; i < prevStringLenght; i++)
+		GLCD_printChar(' ');
+	
+	// Escribe el texto correspondiente al valor booleano actual
+	GLCD_moveCursor(cx - currentStringLenght + 1, cy);
+	printf("%s", stringToPrint);
+}
+
+
+void PRINT_int_rightAlign(int value, uint8_t cx, uint8_t cy)
+{
+	char str[6];
+	uint8_t bytesWritten = (uint8_t)sprintf(str, "%d", value);
+	GLCD_moveCursor(cx - bytesWritten + 1, cy);
+	printf("%s", str);
+}
