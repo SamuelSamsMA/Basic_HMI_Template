@@ -19,14 +19,25 @@ void saveBool(bool value)
 	tasks.controlProcess = 1;
 }
 
+void saveInEEPROM(int* value)
+{
+	uint8_t buf[EEPROM_PAGE_SIZE];
+	buf[0] = (uint8_t)((*value & 0xFF00) >> 8);
+	buf[1] = (uint8_t)(*value & 0x00FF);
+	
+	EEPROM_writePage(0, buf);
+}
+
 void MENU_start(unsigned char key, unsigned int render)
 {
 	static unsigned char indicator = 1;
 	unsigned char prevIndicator = indicator;
-	const uint8_t nOptions = 2;
-	const char* strOptions[2] = {
+	const uint8_t nOptions = 4;
+	const char* strOptions[4] = {
 		"Estado:",
-		"% Intensidad:"
+		"% Intensidad:",
+		"Guardar valor:",
+		"Leer valor:"
 	};
 	
 	switch (key)
@@ -86,6 +97,29 @@ void MENU_start(unsigned char key, unsigned int render)
 			EDIT_integer(NULL_KEY, &eip);
 		}
 			break;
+		case 3:
+		{
+			EDIT_INT_PARAMS eip;
+			eip.cx = 32;
+			eip.cy = 5;
+			eip.initialValue = 0;
+			eip.vmax = 32767;
+			eip.vmin = 0;
+			eip.saveChanges = saveInEEPROM;
+
+			appData.currentEdit = EDIT_integer;
+			EDIT_integer(NULL_KEY, &eip);
+		}
+			break;
+		case 4:
+		{
+			uint8_t buffer[EEPROM_PAGE_SIZE];
+			EEPROM_readPage(0, buffer);
+			
+			int value = ((int)buffer[0] << 8) + (int)buffer[1];
+			PRINT_int_rightAlign(value, 32, 6);
+		}
+			break;
 		}
 		break;
 	
@@ -117,6 +151,12 @@ void MENU_start(unsigned char key, unsigned int render)
 		GLCD_moveCursor(2, 4);
 		printf("%s", strOptions[1]);
 		PRINT_int_rightAlign(appData.LEDdutyCycle, 32, 4);
+		
+		GLCD_moveCursor(2, 5);
+		printf("%s", strOptions[2]);
+		
+		GLCD_moveCursor(2, 6);
+		printf("%s", strOptions[3]);
 	}
 	if (render & PAINT_INDICATOR)
 	{

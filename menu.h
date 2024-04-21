@@ -18,6 +18,7 @@
 #include "rtc_ds3231.h"
 #include "lcd_192x64_text.h"
 #include "matrix_keyboard_5x4.h"
+#include "eeprom_24c32.h"
 
 
 //
